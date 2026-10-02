@@ -321,7 +321,7 @@ export default function Today() {
 
           <button
             type="button"
-            onClick={() => void loadTodaysBookings()}
+            onClick={() => window.location.reload()}
             disabled={isLoading}
             className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-900 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
           >

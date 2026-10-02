@@ -278,10 +278,14 @@ export default function Bookings() {
       const response =
         await getGamingStationsByCategory(categoryId);
 
-      setGamingStations(response);
+      const activeStations = Array.isArray(response)
+        ? response.filter((station: any) => station.isActive)
+        : [];
 
-      if (response.length > 0) {
-        const firstStation = response[0];
+      setGamingStations(activeStations);
+
+      if (activeStations.length > 0) {
+        const firstStation = activeStations[0];
 
         setSelectedGamingStation(firstStation.id);
         handleGetAdditionalPurchases(categoryId);
@@ -353,6 +357,8 @@ export default function Bookings() {
         bookingData
       );
 
+      const bookedSlotCount = holdIds.length;
+
       const response = await confirmBooking(
         bookingData
       );
@@ -385,8 +391,9 @@ export default function Bookings() {
       }
 
       alert(
-        response?.message ||
-        "Booking confirmed successfully."
+        bookedSlotCount > 1
+          ? "Multiple bookings confirmed successfully."
+          : "Booking confirmed successfully."
       );
     } catch (error) {
       console.error(
@@ -535,7 +542,9 @@ export default function Bookings() {
             | "booked"
             | "past" = "available";
 
-          if (slot.isBooked) {
+          if (!slot.isActive) {
+            status = "booked";
+          } else if (slot.isBooked) {
             status = "booked";
           } else if (isToday) {
             const slotDateTime =

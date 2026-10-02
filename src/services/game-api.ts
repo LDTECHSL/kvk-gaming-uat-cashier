@@ -12,12 +12,14 @@ const getToken = () => {
   return cashier ? cashier.token : null;
 };
 
-export const getGames = async () => {
+export const getGames = async (isActive?: boolean) => {
   try {
     const response = await axios.get(`${GAMES_API_URL}`, {
         headers: {
             Authorization: `Bearer ${getToken()}`,
         },
+        params:
+          typeof isActive === "boolean" ? { isActive } : undefined,
     });
     return response.data;
   } catch (error) {
@@ -60,6 +62,24 @@ export const deleteGame = async (id: string | number) => {
         Authorization: `Bearer ${getToken()}`,
       },
     });
+
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const activateGame = async (id: string | number) => {
+  try {
+    const response = await axios.put(
+      `${GAMES_API_URL}${id}/activate`,
+      null,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      }
+    );
 
     return response.data;
   } catch (error) {

@@ -7,6 +7,7 @@ import type {
 import { createPortal } from "react-dom";
 import {
   Activity,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Edit3,
@@ -20,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  activateGame,
   createGame,
   deleteGame as deleteGameApi,
   getGames,
@@ -726,6 +728,9 @@ const GamePage = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive">(
+    "active"
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] =
@@ -790,11 +795,23 @@ const GamePage = () => {
     try {
       setLoading(true);
 
-      const response = await getGames();
+      const [filteredResponse, activeResponse, inactiveResponse] =
+        await Promise.all([
+          getGames(statusFilter === "active"),
+          getGames(true),
+          getGames(false),
+        ]);
 
-      const normalized = extractGames(response);
+      setGames(extractGames(filteredResponse));
 
-      setGames(normalized);
+      const activeCount = extractGames(activeResponse).length;
+      const inactiveCount = extractGames(inactiveResponse).length;
+
+      setGameCounts({
+        total: activeCount + inactiveCount,
+        active: activeCount,
+        inactive: inactiveCount,
+      });
     } catch (error) {
       console.error("Failed to load games:", error);
     } finally {
@@ -804,7 +821,8 @@ const GamePage = () => {
 
   useEffect(() => {
     loadGames();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   /* ------------------------------------------------------------------------ */
   /* Close Action Menu                                                        */
@@ -910,15 +928,18 @@ const GamePage = () => {
   /* Statistics                                                               */
   /* ------------------------------------------------------------------------ */
 
-  const totalGames = games.length;
+  // The table only ever holds one status filter's games at a time, so the
+  // summary counts are tracked separately (covering both statuses) instead
+  // of being derived from the currently-filtered `games` list.
+  const [gameCounts, setGameCounts] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+  });
 
-  const activeGames = games.filter(
-    (game) => game.isActive
-  ).length;
-
-  const inactiveGames = games.filter(
-    (game) => !game.isActive
-  ).length;
+  const totalGames = gameCounts.total;
+  const activeGames = gameCounts.active;
+  const inactiveGames = gameCounts.inactive;
 
   /* ------------------------------------------------------------------------ */
   /* Form                                                                     */
@@ -1248,6 +1269,38 @@ const GamePage = () => {
   };
 
   /* ------------------------------------------------------------------------ */
+  /* Activate                                                                 */
+  /* ------------------------------------------------------------------------ */
+
+  const handleActivate = async (game: Game) => {
+    setLoading(true);
+    try {
+      await activateGame(game.id);
+
+      setPageAlert({
+        visible: true,
+        variant: "success",
+        title: "Game activated",
+        description: "Game activated successfully.",
+      });
+
+      await loadGames();
+    } catch (error) {
+      console.error("Failed to activate game:", error);
+
+      setPageAlert({
+        visible: true,
+        variant: "error",
+        title: "Failed to activate game",
+        description:
+          "An error occurred while activating the game. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ------------------------------------------------------------------------ */
   /* Action Menu                                                              */
   /* ------------------------------------------------------------------------ */
 
@@ -1373,35 +1426,64 @@ const GamePage = () => {
             <span>Update</span>
           </button>
 
-          {/* Delete */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+          {/* Activate / Delete */}
+          {openMenuGame.isActive ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
 
-              const selectedGame =
-                openMenuGame;
+                const selectedGame =
+                  openMenuGame;
 
-              if (!selectedGame) return;
+                if (!selectedGame) return;
 
-              setOpenMenuGame(null);
-              setMenuPosition(null);
+                setOpenMenuGame(null);
+                setMenuPosition(null);
 
-              requestAnimationFrame(() => {
-                setDeleteGame(
-                  selectedGame
-                );
-              });
-            }}
-            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500">
-              <Trash2 size={15} />
-            </span>
+                requestAnimationFrame(() => {
+                  setDeleteGame(
+                    selectedGame
+                  );
+                });
+              }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500">
+                <Trash2 size={15} />
+              </span>
 
-            <span>Delete</span>
-          </button>
+              <span>Delete</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const selectedGame =
+                  openMenuGame;
+
+                if (!selectedGame) return;
+
+                setOpenMenuGame(null);
+                setMenuPosition(null);
+
+                requestAnimationFrame(() => {
+                  void handleActivate(selectedGame);
+                });
+              }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-emerald-600 transition hover:bg-emerald-50"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-500">
+                <CheckCircle2 size={15} />
+              </span>
+
+              <span>Activate</span>
+            </button>
+          )}
         </div>,
         document.body
       )
@@ -1569,35 +1651,69 @@ const GamePage = () => {
                   </p>
                 </div>
 
-                <div className="relative w-full md:max-w-sm">
-                  <Search
-                    size={17}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) =>
-                      setSearch(
-                        e.target.value
-                      )
-                    }
-                    placeholder="Search games..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
-                  />
-
-                  {search && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="inline-flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1">
                     <button
                       type="button"
-                      onClick={() =>
-                        setSearch("")
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 transition hover:text-slate-700"
+                      onClick={() => {
+                        setStatusFilter("active");
+                        setCurrentPage(1);
+                      }}
+                      className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        statusFilter === "active"
+                          ? "bg-white text-red-600 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
                     >
-                      <X size={16} />
+                      Active
                     </button>
-                  )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter("inactive");
+                        setCurrentPage(1);
+                      }}
+                      className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        statusFilter === "inactive"
+                          ? "bg-white text-red-600 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      Inactive
+                    </button>
+                  </div>
+
+                  <div className="relative w-full md:max-w-sm">
+                    <Search
+                      size={17}
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) =>
+                        setSearch(
+                          e.target.value
+                        )
+                      }
+                      placeholder="Search games..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+                    />
+
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSearch("")
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-400 transition hover:text-slate-700"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
