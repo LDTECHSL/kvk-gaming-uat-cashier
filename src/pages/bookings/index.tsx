@@ -607,8 +607,36 @@ export default function Bookings() {
       selectedSlots.includes(slot.id)
     );
 
-  const totalHours =
-    selectedSlotObjects.length;
+  const totalDurationMinutes = (() => {
+    if (selectedSlotObjects.length === 0) return 0;
+
+    const toMinutes = (time: string) => {
+      const [h, m] = time.split(":").map(Number);
+      return h * 60 + (m || 0);
+    };
+
+    const sorted = [...selectedSlotObjects].sort(
+      (a, b) => toMinutes(a.startTime) - toMinutes(b.startTime)
+    );
+
+    const start = toMinutes(sorted[0].startTime);
+    const end = toMinutes(sorted[sorted.length - 1].endTime);
+
+    return end - start;
+  })();
+
+  const formatDuration = (minutes: number) => {
+    if (minutes <= 0) return "-";
+
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    const parts: string[] = [];
+    if (hours > 0) parts.push(`${hours} Hour${hours === 1 ? "" : "s"}`);
+    if (mins > 0) parts.push(`${mins} Min`);
+
+    return parts.join(" ");
+  };
 
   const rate =
     selectedSlotObjects.length > 0
@@ -1503,10 +1531,7 @@ export default function Bookings() {
                   </div>
 
                   <span className="text-xs font-semibold text-gray-900">
-                    {totalHours}{" "}
-                    {totalHours === 1
-                      ? "Hour"
-                      : "Hours"}
+                    {formatDuration(totalDurationMinutes)}
                   </span>
 
                 </div>

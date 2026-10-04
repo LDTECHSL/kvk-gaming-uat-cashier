@@ -124,14 +124,18 @@ export default function PoolSettings() {
 
       // Refresh Pool list
       await handleGetPools();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting Pool:", error);
+
+      // Close the confirmation modal so the error alert underneath isn't hidden behind it.
+      setDeletePc(null);
 
       setPageAlert({
         visible: true,
         variant: "error",
         title: "Error",
-        description: "Failed to delete Pool.",
+        description:
+          error?.response?.data?.message || "Failed to delete Pool.",
       });
     } finally {
       setDeleting(false);

@@ -124,14 +124,18 @@ export default function PCSettings() {
 
       // Refresh PC list
       await handleGetPCs();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting PC:", error);
+
+      // Close the confirmation modal so the error alert underneath isn't hidden behind it.
+      setDeletePc(null);
 
       setPageAlert({
         visible: true,
         variant: "error",
         title: "Error",
-        description: "Failed to delete PC.",
+        description:
+          error?.response?.data?.message || "Failed to delete PC.",
       });
     } finally {
       setDeleting(false);

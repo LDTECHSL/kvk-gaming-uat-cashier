@@ -124,14 +124,18 @@ export default function PS5Settings() {
 
       // Refresh PS5 list
       await handleGetPS5s();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting PS5:", error);
+
+      // Close the confirmation modal so the error alert underneath isn't hidden behind it.
+      setDeletePc(null);
 
       setPageAlert({
         visible: true,
         variant: "error",
         title: "Error",
-        description: "Failed to delete PS5.",
+        description:
+          error?.response?.data?.message || "Failed to delete PS5.",
       });
     } finally {
       setDeleting(false);

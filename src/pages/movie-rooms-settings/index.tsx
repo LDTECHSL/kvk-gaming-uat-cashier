@@ -124,12 +124,18 @@ export default function MovieRoomsSettings() {
 
       // Refresh MovieRooms list
       await handleGetMovieRooms();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error deleting Movie Room:", error);
+
+      // Close the confirmation modal so the error alert underneath isn't hidden behind it.
+      setDeleteMovieRoom(null);
+
       setPageAlert({
         visible: true,
         variant: "error",
         title: "Error",
-        description: "Failed to delete Movie Room.",
+        description:
+          error?.response?.data?.message || "Failed to delete Movie Room.",
       });
     } finally {
       setDeleting(false);

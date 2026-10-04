@@ -35,7 +35,13 @@ export function Alert({
   const styles = variantStyles[variant]
   const [closing, setClosing] = React.useState(false)
 
+  // When pageAlert stays visible:true across two back-to-back alerts (e.g. an error
+  // immediately followed by a success), this component never unmounts, so without
+  // resetting here the new alert would inherit the previous one's already-elapsed
+  // auto-close timer and could vanish almost immediately.
   React.useEffect(() => {
+    setClosing(false)
+
     if (!autoCloseMs) return undefined
 
     const autoCloseTimer = window.setTimeout(() => {
@@ -43,7 +49,7 @@ export function Alert({
     }, autoCloseMs)
 
     return () => window.clearTimeout(autoCloseTimer)
-  }, [autoCloseMs])
+  }, [variant, title, description, autoCloseMs])
 
   React.useEffect(() => {
     if (!closing || !onClose) return undefined
