@@ -1228,15 +1228,16 @@ const GamePage = () => {
   /* ------------------------------------------------------------------------ */
 
   const handleDelete = async () => {
-    if (!deleteGame) return;
+    if (!deleteGame || deleting) return;
 
     setLoading(true);
     try {
       setDeleting(true);
 
-      await deleteGameApi(
-        deleteGame.id
-      );
+      const result = await deleteGameApi(deleteGame.id);
+      if (result?.succeeded === false) {
+        throw new Error(result.message || "Failed to delete game.");
+      }
 
       setDeleteGame(null);
 
@@ -1426,8 +1427,7 @@ const GamePage = () => {
             <span>Update</span>
           </button>
 
-          {/* Activate / Delete */}
-          {openMenuGame.isActive ? (
+          {/* Delete is available for both active and inactive games. */}
             <button
               type="button"
               onClick={(e) => {
@@ -1456,7 +1456,7 @@ const GamePage = () => {
 
               <span>Delete</span>
             </button>
-          ) : (
+          {!openMenuGame.isActive && (
             <button
               type="button"
               onClick={(e) => {
